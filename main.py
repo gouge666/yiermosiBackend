@@ -5,7 +5,6 @@ import numpy as np
 import pandas as pd
 import pickle
 from flask import Flask, request, send_file, make_response, Response, stream_with_context
-
 app = Flask(__name__)
 
 
@@ -21,10 +20,11 @@ data = [
     ['2', '0.88']
 ]
 
+selected_features = [9, 10, 11, 12, 15, 16, 17, 18, 25, 26, 27, 31, 32, 33, 34, 38, 39, 53, 55, 58, 59, 62]
 
 @app.route('/upload', methods=['POST'])
 def upload_file():
-    filename = './models/test_model.sav'
+    filename = './models/my_model1.sav'
     loaded_model = pickle.load(open(filename, 'rb'))
     # 处理上传文件
     thresholdAndExtension = next(iter(request.files.keys()))
@@ -36,16 +36,20 @@ def upload_file():
 
     def readCsv(file):
         df = pd.read_csv(file, header=0, encoding='utf-8')
-        return df.values[:, :80]  # 获取前80列数据
+        return df.values[:, selected_features]  # 获取数据
     def readXlsx(file):
         df = pd.read_excel(file, header=0)
-        return df.values[:, :80]  # 获取前80列数据
+        return df.values[:, selected_features]  # 获取数据
 
     X = readCsv(file) if extension == 'csv' else readXlsx(file)
+    if X.shape[1] != 22:
+        return ""
     print(threshold, file, extension,X)
 
     # 计算结果
     y_pred_prob = loaded_model.predict_proba(X)[:, 1]
+    # y_pred = (y_pred_prob > threshold).astype(int)  # 根据阈值判断类别
+    y_pred_prob = np.around(y_pred_prob, decimals=4)
     ids = list(range(1, len(y_pred_prob) + 1))
     ids = list(map(int, ids))
     dataa = {'ID': ids, 'y_pred': y_pred_prob}
